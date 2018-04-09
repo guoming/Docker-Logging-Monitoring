@@ -1,0 +1,256 @@
+version: '3.5'
+networks:
+  microservice:
+    external:
+      name: microservice
+  elk:
+    external:
+      name: elk
+
+configs:
+  prometheus_yml:
+    file: ./prometheus/prometheus.yml
+  heartbeat_yml:
+    file: ./heartbeat/heartbeat.yml
+  fluentd_conf:
+    file: ./fluentd/fluent.conf
+
+
+
+services:
+  influxdb:
+    restart: always
+    image: tutum/influxdb:latest
+    ports:
+      - "8083:8083"
+      - "8086:8086"
+    deploy:
+     replicas: 1
+     restart_policy:
+      condition: on-failure
+     placement:
+       constraints: [node.labels.type == log]
+    environment:
+      - ADMIN_USER="root" 
+      - INFLUXDB_INIT_PWD="influxdb" 
+      - PRE_CREATE_DB="AppMetrics;"
+    volumes:
+      - /data/elkdata/influxdb:/data
+    networks:
+      - elk
+  elasticsearch:
+    restart: always
+    image: elasticsearch
+    deploy:
+     replicas: 1
+     restart_policy:
+      condition: on-failure
+     placement:
+       constraints: [node.labels.type == log]
+    ports:
+     - "9200:9200"
+    volumes:
+      - /data/elkdata/elasticsearch/data:/usr/share/elasticsearch/data
+    labels:
+      description: 'elasticsearch'
+    networks:
+      - elk
+  fluent_es:
+    restart: always
+    image: yunlzheng/fluent-es
+    deploy:
+     mode: global
+     restart_policy:
+      condition: on-failure
+    stdin_open: true
+    tty: true
+    environment:
+      - FLUENTD_CONF=fluent.conf
+      - FLUENTD_OPT=
+    ports:
+      - "24224:24224/tcp"
+    depends_on:
+      - elasticsearch    
+    labels:
+      description: 'fluent to elasitcsearch'
+    networks:
+      - elk
+    configs:
+      - source: fluentd_conf
+        target: /fluentd/etc/fluent.conf
+  heartbeat:
+    restart: always
+    image: docker.elastic.co/beats/heartbeat:6.2.1
+    deploy:
+     replicas: 1
+     restart_policy:
+      condition: on-failure
+     placement:
+       constraints: [node.labels.type == log]
+    depends_on:
+      - elasticsearch   
+    networks:
+      - elk
+    configs:
+      - source: heartbeat_yml
+        target: /usr/share/heartbeat/heartbeat.yml
+  prometheus:
+    restart: always
+    image: prom/prometheus
+    deploy:
+     replicas: 1
+     restart_policy:
+      condition: on-failure
+     placement:
+       constraints: [node.labels.type == log]
+    ports:
+      - "9090:9090"
+    volumes:
+      - /data/elkdata/prometheus/data:/prometheus
+    configs:
+      - source: prometheus_yml
+        target: /etc/prometheus/prometheus.yml
+    networks:
+      - microservice
+      - elk
+  prometheus_node_exporter:
+    restart: always
+    image: quay.io/prometheus/node-exporter
+    deploy:
+     mode: global
+     restart_policy:
+      condition: on-failure
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro 
+      - /sys:/host/sys:ro 
+      - /:/rootfs:ro
+    networks:
+      - elk
+  prometheus_rabbitmq_exporter:
+    restart: always
+    image: kbudde/rabbitmq-exporter
+    deploy:
+     replicas: 1
+     restart_policy:
+      condition: on-failure
+     placement:
+       constraints: [node.labels.type == log]
+    ports:
+      - "9419:9419"    
+    environment:
+      - RABBIT_URL=http://hc005pe-mq.chinaeast.cloudapp.chinacloudapi.cn:15672
+      - RABBIT_USER=KMEHosp
+      - RABBIT_PASSWORD=123456      
+      - PUBLISH_PORT=9419
+    networks:
+      - elk  
+  prometheus_consul_exporter:
+    restart: always
+    image: prom/consul-exporter
+    deploy:
+     replicas: 1
+     restart_policy:
+      condition: on-failure
+     placement:
+       constraints: [node.labels.type == log]
+    ports:
+      - "9107:9107"    
+    command: --consul.server=consul:8500
+    networks:
+      - elk
+      - microservice
+  prometheus_redis_exporter:
+    restart: always
+    image: oliver006/redis_exporter
+    deploy:
+     replicas: 1
+     restart_policy:
+      condition: on-failure
+     placement:
+       constraints: [node.labels.type == log]
+    ports:
+      - "9121:9121"    
+    environment:
+      - REDIS_ADDR=HC005PE-Redis.redis.cache.chinacloudapi.cn:6379
+      - REDIS_PASSWORD=EfzUdYDnRqCTC+1xIR25uKXMSNIBEvYs7I/PpYyjhB4=
+    networks:
+      - elk
+  prometheus_mongodb_exporter:
+    restart: always
+    image: eses/mongodb_exporter
+    deploy:
+     replicas: 1
+     restart_policy:
+      condition: on-failure
+     placement:
+       constraints: [node.labels.type == log]
+    ports:
+      - "9104:9104"          
+    command: -mongodb.uri mongodb://hc005pe-docdb:KeEZxSxMuDKF0ZYq9ih9GuMvuXRIYiwJQoxvAobV1PclHh1ryJksJjlGOVZgOPyeEwLNyTtDa1XOxxOnvMaGdQ==@hc005pe-docdb.documents.azure.cn:10255/
+    networks:
+      - elk
+  prometheus_mssql_exporter:
+    restart: always
+    image: awaragi/prometheus-mssql-exporter
+    deploy:
+     replicas: 1
+     restart_policy:
+      condition: on-failure
+     placement:
+       constraints: [node.labels.type == log]
+    ports:
+      - "4000:4000"    
+    environment:
+      - SERVER=hc005pe-db.database.chinacloudapi.cn
+      - PORT=1433
+      - USERNAME=KMEHosp
+      - PASSWORD=KMEH0sp#2017!!06!!!29!!!!Azure##Pwd
+      - DEBUG=app
+    networks:
+      - elk
+  kibana:
+    restart: always
+    image: kibana
+    deploy:
+     replicas: 1
+     restart_policy:
+      condition: on-failure
+     placement:
+       constraints: [node.labels.type == log]
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+    depends_on:
+      - elasticsearch
+    labels:
+      description: 'elastic kibana'
+    networks:
+      - elk
+  grafana:
+    restart: always
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    deploy:
+     replicas: 1
+     restart_policy:
+      condition: on-failure
+     placement:
+       constraints: [node.labels.type == log]
+    volumes:
+      - /data/elkdata/grafana:/var/lib/grafana
+    depends_on:
+      - elasticsearch
+      - prometheus
+      - influxdb
+    networks:
+      - elk
+
+      
+
+
+
+

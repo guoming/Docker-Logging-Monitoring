@@ -1,0 +1,134 @@
+﻿heartbeat.monitors:
+- type: icmp
+  schedule: '@every 5s'
+  hosts:
+    - elasticsearch
+    - kibana
+
+#azuresql tcp/1433
+- type: tcp
+  schedule: '@every 5s'
+  hosts: ["hc005pe-db.database.chinacloudapi.cn"]
+  ports: [1433]
+
+#rabbitmq tcp/5672
+- type: tcp
+  schedule: '@every 5s'
+  hosts: ["hc005pe-mq.chinaeast.cloudapp.chinacloudapi.cn"]
+  ports: [5672]
+
+#mongodb tcp/10255
+- type: tcp
+  schedule: '@every 5s'
+  hosts: ["hc005pe-docdb.documents.azure.cn"]
+  ports: [10255]
+
+#Redis tcp/6380
+- type: tcp
+  schedule: '@every 5s'
+  hosts: ["HC005PE-Redis.redis.cache.chinacloudapi.cn"]
+  ports: [6380]
+
+#elk Http Port check
+- type: http
+  schedule: '@every 10s'
+  urls:
+    - http://elasticsearch:9200
+    - http://kibana:5601
+  check.request.method: HEAD
+  check.response.status: 200
+
+#self Http Port check
+- type: http
+  schedule: '@every 10s'
+  urls:
+    - https://www.kmwlyy.com/
+    - https://api.kmwlyy.com/
+    - https://commonapi.kmwlyy.com/
+    - https://store.kmwlyy.com/
+    - https://doctor.kmwlyy.com/
+    - https://doctorapi.kmwlyy.com/
+    - https://user.kmwlyy.com/
+    - https://userapi.kmwlyy.com/
+    - https://yd.kmwlyy.com/
+    - https://ydm.kmwlyy.com/
+    - https://ydapi.kmwlyy.com/
+    - https://recipe.kmwlyy.com/
+    - https://recipem.kmwlyy.com/
+    - https://recipeapi.kmwlyy.com/
+    - https://recipestore.kmwlyy.com/
+    - https://hz.kmwlyy.com/
+    - https://hzapi.kmwlyy.com/
+    - https://dzapi.kmwlyy.com/
+    - https://guidance.kmwlyy.com/
+    - https://guidanceapi.kmwlyy.com/
+    - https://org.kmwlyy.com/
+    - https://admin.kmwlyy.com/
+    - https://family.kmwlyy.com/
+    - https://familyapi.kmwlyy.com/
+  check.request.method: HEAD
+  check.response.status: 200
+
+#thrid http port check
+- type: http
+  schedule: '@every 10s'
+  urls:
+    - https://www.yiwangqian.com
+    - http://www.kmhealthstation.com
+    - http://search.jkbat.com
+    - http://www.jkbat.com
+    - http://112.74.245.118:2801
+  check.request.method: HEAD
+  check.response.status: 200
+
+#thrid http port check
+- type: http
+  schedule: '@every 10s'
+  urls:
+    - http://drugstore.km1818.com:8182/zyf/ws/IThirdOrderWSDL?wsdl
+    - http://api.jkbat.com
+  check.request.method: GET
+  check.response.status: 200
+
+#Http microservice healthcheck
+- type: http
+  schedule: '@every 10s'
+  urls: 
+    - http://openapi.kmwlyy.com:8500/
+    - http://openapi.kmwlyy.com/healthcheck
+    - http://openapi.kmwlyy.com/recorderservice/healthcheck
+    - http://openapi.kmwlyy.com/pharmacyservice/healthcheck
+  check.request:
+     method: GET
+  check.response:
+     status: 200
+     body: '{"status":"Healthy"}'
+
+#Http microservice healthcheck
+- type: http
+  schedule: '@every 10s'
+  urls:     
+    - http://openapi.kmwlyy.com/msgnotify/api/v1/home/index
+  check.request:
+    method: GET
+  check.response:
+    status: 200
+    body: '{"Status":0,"Msg":"成功！","Data":null}'
+
+processors:
+- add_cloud_metadata:
+#系统标识
+name: kmwlyy
+#输出
+#output.logstash:
+#  hosts: ['log.kmwlyy.com:8075']
+
+output.elasticsearch:
+  hosts: ['elasticsearch:9200']
+  username: elastic
+  password: changeme
+
+#setup.kibana:
+#  host: "kibana:5601"
+#  username: "elastic" 
+#  password: "elastic"
