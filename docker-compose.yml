@@ -35,7 +35,7 @@ services:
       - INFLUXDB_INIT_PWD="influxdb" 
       - PRE_CREATE_DB="AppMetrics;"
     volumes:
-      - /data/elkdata/influxdb:/data
+      - /mnt/log-monitor/influxdb:/data
     networks:
       - elk
   elasticsearch:
@@ -50,7 +50,7 @@ services:
     ports:
      - "9200:9200"
     volumes:
-      - /data/elkdata/elasticsearch/data:/usr/share/elasticsearch/data
+      - /mnt/log-monitor/elasticsearch/data:/usr/share/elasticsearch/data
     labels:
       description: 'elasticsearch'
     networks:
@@ -106,7 +106,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - /data/elkdata/prometheus/data:/prometheus
+      - /mnt/log-monitor/prometheus/data:/prometheus
     configs:
       - source: prometheus_yml
         target: /etc/prometheus/prometheus.yml
@@ -140,9 +140,9 @@ services:
     ports:
       - "9419:9419"    
     environment:
-      - RABBIT_URL=http://hc005pe-mq.chinaeast.cloudapp.chinacloudapi.cn:15672
-      - RABBIT_USER=KMEHosp
-      - RABBIT_PASSWORD=123456      
+      - RABBIT_URL=http://<server>:15672
+      - RABBIT_USER=<account>
+      - RABBIT_PASSWORD=<password>      
       - PUBLISH_PORT=9419
     networks:
       - elk  
@@ -173,8 +173,8 @@ services:
     ports:
       - "9121:9121"    
     environment:
-      - REDIS_ADDR=HC005PE-Redis.redis.cache.chinacloudapi.cn:6379
-      - REDIS_PASSWORD=EfzUdYDnRqCTC+1xIR25uKXMSNIBEvYs7I/PpYyjhB4=
+      - REDIS_ADDR=<server>:6379
+      - REDIS_PASSWORD=<password>
     networks:
       - elk
   prometheus_mongodb_exporter:
@@ -188,7 +188,7 @@ services:
        constraints: [node.labels.type == log]
     ports:
       - "9104:9104"          
-    command: -mongodb.uri mongodb://hc005pe-docdb:KeEZxSxMuDKF0ZYq9ih9GuMvuXRIYiwJQoxvAobV1PclHh1ryJksJjlGOVZgOPyeEwLNyTtDa1XOxxOnvMaGdQ==@hc005pe-docdb.documents.azure.cn:10255/
+    command: -mongodb.uri mongodb://<account>:<password>@<server>:10255/
     networks:
       - elk
   prometheus_mssql_exporter:
@@ -203,10 +203,10 @@ services:
     ports:
       - "4000:4000"    
     environment:
-      - SERVER=hc005pe-db.database.chinacloudapi.cn
+      - SERVER=<server>
       - PORT=1433
-      - USERNAME=KMEHosp
-      - PASSWORD=KMEH0sp#2017!!06!!!29!!!!Azure##Pwd
+      - USERNAME=<account>
+      - PASSWORD=<password>
       - DEBUG=app
     networks:
       - elk
@@ -241,7 +241,7 @@ services:
      placement:
        constraints: [node.labels.type == log]
     volumes:
-      - /data/elkdata/grafana:/var/lib/grafana
+      - /mnt/log-monitor/grafana:/var/lib/grafana
     depends_on:
       - elasticsearch
       - prometheus
